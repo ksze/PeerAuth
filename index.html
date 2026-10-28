@@ -1,10 +1,14 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <title>PeerAuth</title>
+    <meta name="description" content="Set up shared TOTP codes between any two people, entirely in your browser, to verify each other's identity over phone or video calls.">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
     <style>
         @media (max-width: 767px) {
             .qr-column {
@@ -12,17 +16,34 @@
                 max-width: 100%;
             }
         }
-    </style>
-    <style>
+
         .language-switcher {
             position: absolute;
             top: 20px;
             right: 20px;
         }
+
+        /* One prose measure for the whole page: the container runs ~1140px on
+           desktop, which renders intro/step copy at ~131 chars per line. */
+        body.container {
+            max-width: 70ch;
+        }
+
+        /* Air above headings (more than the 0.5rem below) so sections read
+           as groups instead of one undifferentiated column. */
+        h2, h3 {
+            margin-top: 2rem;
+        }
+
+        /* Avoid a single orphaned word on the last wrapped line. */
+        p, li {
+            text-wrap: pretty;
+        }
     </style>
 </head>
 <body class="container mt-5">
     <div class="language-switcher">
+        <label for="languageSelect" class="visually-hidden" data-i18n="languageLabel">Language</label>
         <select id="languageSelect" class="form-select">
             <option value="en">English</option>
             <option value="de">Deutsch</option>
@@ -30,16 +51,19 @@
         </select>
     </div>
     
-    <h1>PeerAuth</h1>
+    <h1 class="d-flex align-items-center gap-2 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="44" height="44" role="img" aria-hidden="true" focusable="false"><rect width="64" height="64" rx="14" fill="#0d6efd"/><g fill="none" stroke="#ffffff" stroke-width="5"><rect x="9" y="9" width="17" height="17" rx="4.5"/><rect x="38" y="9" width="17" height="17" rx="4.5"/><rect x="9" y="38" width="17" height="17" rx="4.5"/><path d="M32 46 L39 53 L54 36" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></g><g fill="#ffffff"><rect x="14.5" y="14.5" width="6" height="6" rx="1.5"/><rect x="43.5" y="14.5" width="6" height="6" rx="1.5"/><rect x="14.5" y="43.5" width="6" height="6" rx="1.5"/></g></svg>
+        <span>PeerAuth</span>
+    </h1>
     <h2 data-i18n="whatIsThis">What is this?</h2>
     <p data-i18n="intro1">
         Machine learning has become more and more powerful, to the point where a bad actor can take a photo and a voice
-        recording of someone you know, and forge a complete video recording. See the "OmniHuman-1" model developed by ByteDance:<br>
-        <ul>
-            <li><a href="https://x.com/ai_for_success/status/1886685232952435133" data-i18n="discussionLink">discussion on X</a></li>
-            <li><a href="https://omnihuman-lab.github.io/" data-i18n="paperLink">ByteDance's paper</a></li>
-        </ul>
+        recording of someone you know, and forge a complete video recording. See the "OmniHuman-1" model developed by ByteDance:
     </p>
+    <ul>
+        <li><a href="https://x.com/ai_for_success/status/1886685232952435133" data-i18n="discussionLink">discussion on X</a></li>
+        <li><a href="https://omnihuman-lab.github.io/" data-i18n="paperLink">ByteDance's paper</a></li>
+    </ul>
     <p data-i18n="intro2">Bad actors can now digitally impersonate someone you love, and trick you into doing things like paying a ransom.</p>
     <p data-i18n="solutionDesc">To mitigate that risk, I have developed this simple solution where you can setup a unique time-based one-time passcode (TOTP) between any pair of persons.</p>
     <p data-i18n="howItWorks">This is how it works:</p>
@@ -55,16 +79,19 @@
     <p><a href="https://github.com/ksze/PeerAuth" target="_blank"><span data-i18n="srccode">Source code of this page on GitHub</span></a></p>
     <div class="mb-3">
         <label for="name1" class="form-label" data-i18n="person1">Person 1</label>
-        <input type="text" class="form-control" id="name1" required>
+        <input type="text" class="form-control" id="name1" required maxlength="50">
     </div>
-    
+
     <div class="mb-3">
         <label for="name2" class="form-label" data-i18n="person2">Person 2</label>
-        <input type="text" class="form-control" id="name2" required>
+        <input type="text" class="form-control" id="name2" required maxlength="50">
     </div>
-    
-    <button id="generateBtn" class="btn btn-primary mb-4" disabled data-i18n="generate">Generate</button>
-    
+
+    <button id="generateBtn" class="btn btn-primary mb-2" disabled data-i18n="generate" aria-describedby="generateHint">Generate</button>
+    <p class="form-text" id="generateHint" data-i18n="generateHint">Enter both names to enable Generate.</p>
+
+    <div id="cdnError" class="alert alert-danger" role="alert" style="display: none;" data-i18n="cdnError"></div>
+
     <div id="qrSection" style="display: none;">
         <p>
             <span data-i18n="base32secret"></span><br>
@@ -82,8 +109,8 @@
         </div>
         
         <div class="mt-4">
-            <h4 data-i18n="verificationOTP">Verification OTP:</h4>
-            <p id="otpDisplay1" class="h2"></p>
+            <h3 data-i18n="verificationOTP">Verification OTP:</h3>
+            <p id="otpDisplay1" class="h2" role="status" aria-live="polite" aria-atomic="true"></p>
             <p><span data-i18n="expiresIn">Expires in </span><span id="countdown">30</span><span data-i18n="seconds"> seconds</span></p>
         </div>
     </div>
@@ -119,6 +146,10 @@
                 'hn': 'Discussion on Hacker News',
                 'srccode': 'Source code of this page on GitHub',
                 'base32secret': 'If you are not able to scan the QR codes below, here is the TOTP secret key encoded as base32, for manual entry into authenticator app:',
+                'languageLabel': 'Language',
+                'qrAlt': 'PeerAuth setup QR code for {name}',
+                'cdnError': 'Required components could not be loaded from the CDN. Check your internet connection and reload the page.',
+                'generateHint': 'Enter both names to enable Generate.',
             },
             'zh-CN': {
                 'whatIsThis': '这是什么？',
@@ -144,6 +175,10 @@
                 'hn': 'Hacker News 上的讨论',
                 'srccode': '本页于 GitHub 上的源代码',
                 'base32secret': '假如你无法扫描下面的二维码，你还可以手动输入这个以 base32 编码的 TOTP 密钥到验证器应用里：',
+                'languageLabel': '语言',
+                'qrAlt': '{name} 的 PeerAuth 设置二维码',
+                'cdnError': '无法从 CDN 加载所需组件。请检查网络连接后重新加载页面。',
+                'generateHint': '输入双方名字后即可点击“生成”。',
             },
             'de': {
                 'whatIsThis': 'Was ist das hier?',
@@ -169,6 +204,10 @@
                 'hn': 'Diskussion auf Hacker News (Englisch)',
                 'srccode': 'Der Quellcode dieser Seite auf GitHub',
                 'base32secret': 'Falls ihr die QR Codes nicht einscannen könnt, ist hier der geheime Schlüssel als Base32 für die manuelle Eingabe in die Zweifaktorapp:',
+                'languageLabel': 'Sprache',
+                'qrAlt': 'PeerAuth-Einrichtungs-QR-Code für {name}',
+                'cdnError': 'Erforderliche Komponenten konnten nicht vom CDN geladen werden. Bitte prüfe deine Internetverbindung und lade die Seite neu.',
+                'generateHint': 'Gib beide Namen ein, um „Erzeugen“ zu aktivieren.',
             },
         };
 
@@ -192,6 +231,7 @@
         }
 
         function updateContent(lang) {
+            document.documentElement.lang = lang;
             document.querySelectorAll('[data-i18n]').forEach(element => {
                 const key = element.dataset.i18n;
                 if (translations[lang][key]) {
@@ -231,6 +271,12 @@
         });
 
         generateBtn.addEventListener('click', () => {
+            if (typeof OTPAuth === 'undefined' || typeof QRCode === 'undefined') {
+                document.getElementById('cdnError').style.display = 'block';
+                return;
+            }
+            document.getElementById('cdnError').style.display = 'none';
+
             if (interval !== null) { clearInterval(interval); }
 
             const name1 = document.getElementById('name1').value;
@@ -262,11 +308,15 @@
 
             function updateOtpDisplay() {
                 if (!totp1) return;
-                
+
                 const now = Math.floor(Date.now() / 1000);
                 const remaining = period - (now % period);
-                
-                document.getElementById('otpDisplay1').textContent = totp1.generate();
+
+                const otpDisplay = document.getElementById('otpDisplay1');
+                const code = totp1.generate();
+                if (otpDisplay.textContent !== code) {
+                    otpDisplay.textContent = code;
+                }
                 document.getElementById('countdown').textContent = remaining;
             }
 
@@ -278,27 +328,31 @@
             document.getElementById('qrSection').style.display = 'block';
             const qrcode1node = document.getElementById('qrcode1');
             const qrcode2node = document.getElementById('qrcode2');
-            for (node of [qrcode1node, qrcode2node]) {
+            for (const node of [qrcode1node, qrcode2node]) {
                 while (node.lastElementChild) {
                     node.removeChild(node.lastElementChild);
                 }
             }
+            const qrAltTemplate = translations[lang].qrAlt || 'PeerAuth setup QR code for {name}';
             new QRCode(document.getElementById('qrcode1'), {
                 text: totp1.toString(),
                 width: 200,
                 height: 200,
                 correctLevel: QRCode.CorrectLevel.H
             });
-            
+            qrcode1node.querySelector('img').setAttribute('alt', qrAltTemplate.replace('{name}', name1));
+
             new QRCode(document.getElementById('qrcode2'), {
                 text: totp2.toString(),
                 width: 200,
                 height: 200,
                 correctLevel: QRCode.CorrectLevel.H
             });
+            qrcode2node.querySelector('img').setAttribute('alt', qrAltTemplate.replace('{name}', name2));
 
-            // Smooth scroll to qrcode1 with animation
-            document.getElementById('qrSection').scrollIntoView({behavior: 'smooth', block: 'start', inline: 'nearest'});
+            // Smooth scroll to qrcode1, honoring reduced-motion preference
+            const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            document.getElementById('qrSection').scrollIntoView({behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'start', inline: 'nearest'});
 
             updateOtpDisplay();
             interval = setInterval(updateOtpDisplay, 1000);
