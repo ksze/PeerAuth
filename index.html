@@ -212,22 +212,47 @@
         };
 
         // Function to detect user's preferred language
+        const SUPPORTED_LANGUAGES = ['en', 'de', 'zh-CN'];
+        const LANG_COOKIE = 'peerauth_lang';
+
         function getPreferredLanguage() {
-            const supportedLanguages = ['en', 'de', 'zh-CN'];
             const browserLanguages = navigator.languages || [navigator.language];
 
             for (let lang of browserLanguages) {
                 // Check exact match
-                if (supportedLanguages.includes(lang)) {
+                if (SUPPORTED_LANGUAGES.includes(lang)) {
                     return lang;
                 }
                 // Check language prefix (e.g., 'zh' for 'zh-CN')
                 const langPrefix = lang.split('-')[0];
-                if (supportedLanguages.includes(langPrefix)) {
+                if (SUPPORTED_LANGUAGES.includes(langPrefix)) {
                     return langPrefix;
                 }
             }
             return 'en'; // Default to English
+        }
+
+        function setLangCookie(lang) {
+            document.cookie = LANG_COOKIE + '=' + encodeURIComponent(lang) + ';max-age=31536000;path=/;SameSite=Lax';
+        }
+
+        function getLangCookie() {
+            const match = document.cookie.match(new RegExp('(?:^|; )' + LANG_COOKIE + '=([^;]*)'));
+            return match ? decodeURIComponent(match[1]) : null;
+        }
+
+        // Resolution order: ?lang= query param > cookie > browser preference
+        function resolveInitialLanguage() {
+            const param = new URLSearchParams(window.location.search).get('lang');
+            if (param && SUPPORTED_LANGUAGES.includes(param)) {
+                setLangCookie(param);
+                return param;
+            }
+            const cookie = getLangCookie();
+            if (cookie && SUPPORTED_LANGUAGES.includes(cookie)) {
+                return cookie;
+            }
+            return getPreferredLanguage();
         }
 
         function updateContent(lang) {
@@ -244,11 +269,13 @@
             });
         }
 
-        // Initialize with user's preferred language
-        const preferredLang = getPreferredLanguage();
+        // Initialize with the resolved language and sync the dropdown
+        const preferredLang = resolveInitialLanguage();
+        document.getElementById('languageSelect').value = preferredLang;
         updateContent(preferredLang);
 
         document.getElementById('languageSelect').addEventListener('change', (e) => {
+            setLangCookie(e.target.value);
             updateContent(e.target.value);
         });
     </script>
