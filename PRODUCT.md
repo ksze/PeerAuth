@@ -33,7 +33,7 @@ Repurposes standards-based TOTP — the same secret/QR/app mechanism people alre
 - Standard TOTP parameters: SHA1, 6 digits, 30 s period, issuer "PeerAuth", base32 manual-entry fallback; compatible with standard authenticator apps (Authy, Google Authenticator, Microsoft Authenticator, 腾讯身份验证器).
 - Security boundary stated in copy: the scheme depends on both phones being secure; a stolen, unlocked phone defeats it.
 - WCAG 2.1 AA accessibility target (binding, added 2026-10-28).
-- Undecided product facts (do not invent answers): language preference is not persisted across visits; only one shared secret exists per generated pair; no dark mode has been decided.
+- Decided product facts: language preference persists via the `peerauth_lang` cookie (1 year) with a `?lang=` query param override (resolution order: param → cookie → browser detection), matching k_sze's cookie + `lang` param pattern. Only one shared secret exists per generated pair; no dark mode has been decided.
 
 ## Brand Commitments
 
