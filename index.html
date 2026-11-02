@@ -5,6 +5,15 @@
     <title>PeerAuth</title>
     <meta name="description" content="Set up shared TOTP codes between any two people, entirely in your browser, to verify each other's identity over phone or video calls.">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        // Set the Bootstrap color mode before first paint: cookie choice wins,
+        // otherwise follow the OS preference.
+        (function () {
+            var m = document.cookie.match(/(?:^|; )peerauth_theme=(light|dark)/);
+            var theme = m ? m[1] : (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-bs-theme', theme);
+        })();
+    </script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16.png">
@@ -17,11 +26,20 @@
             }
         }
 
-        .language-switcher {
+        .top-controls {
             position: absolute;
             top: 20px;
             right: 20px;
+            display: flex;
+            align-items: center;
+            gap: .5rem;
         }
+
+        /* Theme toggle shows the moon in light mode, the sun in dark mode */
+        [data-bs-theme="light"] .theme-icon-moon { display: inline; }
+        [data-bs-theme="light"] .theme-icon-sun { display: none; }
+        [data-bs-theme="dark"] .theme-icon-moon { display: none; }
+        [data-bs-theme="dark"] .theme-icon-sun { display: inline; }
 
         /* One prose measure for the whole page: the container runs ~1140px on
            desktop, which renders intro/step copy at ~131 chars per line. */
@@ -42,13 +60,17 @@
     </style>
 </head>
 <body class="container mt-5">
-    <div class="language-switcher">
+    <div class="top-controls">
         <label for="languageSelect" class="visually-hidden" data-i18n="languageLabel">Language</label>
         <select id="languageSelect" class="form-select">
             <option value="en">English</option>
             <option value="de">Deutsch</option>
             <option value="zh-CN">简体中文</option>
         </select>
+        <button id="themeToggle" class="btn btn-outline-secondary" type="button" aria-pressed="false" data-i18n-aria="themeToggleLabel" aria-label="Toggle dark mode">
+            <svg class="theme-icon-moon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M6 .278a.77.77 0 0 1 .08.858 7.2 7.2 0 0 0-.878 3.46c0 4.021 3.278 7.277 7.318 7.277q.792-.001 1.533-.16a.79.79 0 0 1 .81.316.73.73 0 0 1-.031.893A8.35 8.35 0 0 1 8.344 16C3.734 16 0 12.286 0 7.71 0 4.566 1.881 1.865 4.579.804a.75.75 0 0 1 .736.296z"/></svg>
+            <svg class="theme-icon-sun" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 12a4 4 0 1 1 0-8 4 4 0 0 1 0 8M8 0a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 0m0 13a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-1 0v-2A.5.5 0 0 1 8 13m8-5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2a.5.5 0 0 1 .5.5M3 8a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1 0-1h2A.5.5 0 0 1 3 8m10.657-5.657a.5.5 0 0 1 0 .707l-1.414 1.415a.5.5 0 1 1-.707-.708l1.414-1.414a.5.5 0 0 1 .707 0m-9.193 9.193a.5.5 0 0 1 0 .707L3.05 13.657a.5.5 0 0 1-.707-.707l1.414-1.414a.5.5 0 0 1 .707 0m9.193 2.121a.5.5 0 0 1-.707 0l-1.414-1.414a.5.5 0 0 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .707M4.464 4.465a.5.5 0 0 1-.707 0L2.343 3.05a.5.5 0 1 1 .707-.707l1.414 1.414a.5.5 0 0 1 0 .708"/></svg>
+        </button>
     </div>
     
     <h1 class="d-flex align-items-center gap-2 mb-4">
@@ -150,6 +172,7 @@
                 'qrAlt': 'PeerAuth setup QR code for {name}',
                 'cdnError': 'Required components could not be loaded from the CDN. Check your internet connection and reload the page.',
                 'generateHint': 'Enter both names to enable Generate.',
+                'themeToggleLabel': 'Toggle dark mode',
             },
             'zh-CN': {
                 'whatIsThis': '这是什么？',
@@ -179,6 +202,7 @@
                 'qrAlt': '{name} 的 PeerAuth 设置二维码',
                 'cdnError': '无法从 CDN 加载所需组件。请检查网络连接后重新加载页面。',
                 'generateHint': '输入双方名字后即可点击“生成”。',
+                'themeToggleLabel': '切换深色模式',
             },
             'de': {
                 'whatIsThis': 'Was ist das hier?',
@@ -208,12 +232,14 @@
                 'qrAlt': 'PeerAuth-Einrichtungs-QR-Code für {name}',
                 'cdnError': 'Erforderliche Komponenten konnten nicht vom CDN geladen werden. Bitte prüfe deine Internetverbindung und lade die Seite neu.',
                 'generateHint': 'Gib beide Namen ein, um „Erzeugen“ zu aktivieren.',
+                'themeToggleLabel': 'Dunkelmodus umschalten',
             },
         };
 
         // Function to detect user's preferred language
         const SUPPORTED_LANGUAGES = ['en', 'de', 'zh-CN'];
         const LANG_COOKIE = 'peerauth_lang';
+        const THEME_COOKIE = 'peerauth_theme';
 
         function getPreferredLanguage() {
             const browserLanguages = navigator.languages || [navigator.language];
@@ -232,13 +258,21 @@
             return 'en'; // Default to English
         }
 
+        function setCookie(name, value) {
+            document.cookie = name + '=' + encodeURIComponent(value) + ';max-age=31536000;path=/;SameSite=Lax';
+        }
+
+        function getCookie(name) {
+            const match = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+            return match ? decodeURIComponent(match[1]) : null;
+        }
+
         function setLangCookie(lang) {
-            document.cookie = LANG_COOKIE + '=' + encodeURIComponent(lang) + ';max-age=31536000;path=/;SameSite=Lax';
+            setCookie(LANG_COOKIE, lang);
         }
 
         function getLangCookie() {
-            const match = document.cookie.match(new RegExp('(?:^|; )' + LANG_COOKIE + '=([^;]*)'));
-            return match ? decodeURIComponent(match[1]) : null;
+            return getCookie(LANG_COOKIE);
         }
 
         // Resolution order: ?lang= query param > cookie > browser preference
@@ -267,6 +301,12 @@
                     }
                 }
             });
+            document.querySelectorAll('[data-i18n-aria]').forEach(element => {
+                const ariaKey = element.dataset.i18nAria;
+                if (translations[lang][ariaKey]) {
+                    element.setAttribute('aria-label', translations[lang][ariaKey]);
+                }
+            });
         }
 
         // Initialize with the resolved language and sync the dropdown
@@ -274,9 +314,20 @@
         document.getElementById('languageSelect').value = preferredLang;
         updateContent(preferredLang);
 
+        // Sync the theme toggle state with the color mode applied before first paint
+        document.getElementById('themeToggle').setAttribute('aria-pressed', String(document.documentElement.getAttribute('data-bs-theme') === 'dark'));
+
         document.getElementById('languageSelect').addEventListener('change', (e) => {
             setLangCookie(e.target.value);
             updateContent(e.target.value);
+        });
+
+        // Theme toggle: persist the explicit choice; the icon follows data-bs-theme via CSS
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            const next = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'light' : 'dark';
+            document.documentElement.setAttribute('data-bs-theme', next);
+            setCookie(THEME_COOKIE, next);
+            document.getElementById('themeToggle').setAttribute('aria-pressed', String(next === 'dark'));
         });
     </script>
 
